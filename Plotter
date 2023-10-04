@@ -1,0 +1,239 @@
+import numpy as np
+import matplotlib as plt
+import math as m
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
+from mpl_toolkits.mplot3d.art3d import Line3D
+
+
+#sterographically project down to x,y,z
+def stereographic_projection(w, x, y, z):
+    # Calculate the squared length of the 4D vector
+    length_squared = w**2 + x**2 + y**2 + z**2
+
+    # Check if the length is not too close to zero to avoid division by near-zero
+    if length_squared < 1e-12:
+        return 0.0, 0.0, 0.0
+    elif length_squared > 1:
+        w = w / length_squared
+        x = x / length_squared
+        y = y / length_squared
+        z = z / length_squared
+    # Calculate the factor for normalization
+    if w == 1:
+        return 0, 0, 0
+    else:
+        factor = 1 / (1 - w)
+
+        #project the 4D vector to 3D space
+        newx = x * factor
+        newy = y * factor
+        newz = z * factor
+        return newx, newy, newz
+
+# phi: 0 to 2pi,  theta: -pi/2 to pi/2
+def sphere_to_cart(phi, theta):
+    x = m.cos(theta) * m.cos(phi)
+    y = m.cos(theta) * m.sin(phi)
+    z = m.sin(theta)
+    return x, y, z
+
+# Perform Quaternion multiplication on a point
+def Quaternion_Multiplication(w1, x1, y1, z1, w2, x2, y2, z2):
+    # (w1 + x1 i + y1 j + z1 k) x (w2 + x2 i + y2 j + z2 k)
+    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
+    x = w1 * x2 + w2 * x1 + y1 * z2 - y2 * z1
+    y = w1 * y2 + w2 * y1 + z1 * x2 - z2 * x1 
+    z = w1 * z2 + w2 * z1 + x1 * y2 - x2 * y1
+
+    # normalize 
+    mag = m.sqrt(w * w + x * x + y * y + z * z)
+    return w/mag, x/mag, y/mag, z/mag
+
+# Generates points for a unit circle with t = linspace(0, 2pi, numpoints)  sin(t) in the ith position and cos(t) in the jth position  where 0 1 2 3 = w xi yj zk
+def sixteen_cell_edge(i, j, numpoints):
+    numpoints = numpoints
+    theta = np.linspace(0, 2*m.pi, numpoints)
+    if i < 0 or i > 3 or j < 0 or j > 3 or j == i:
+        raise ValueError("incorrect i and j: range:(0,4), i(cos) must be different than j(sin)")
+
+    points_list = []
+    for value in theta:
+        point = [0.0, 0.0, 0.0, 0.0]
+        point[i] = m.sin(value)
+        point[j] = m.cos(value)
+        points_list.append(point)
+
+    return points_list
+
+
+def sixteen_cell_edges(numpoints):
+    n = numpoints
+    # generate  points for the 6 circles of the 16 cell
+    pointsi = sixteen_cell_edge(0, 1, n)
+    pointsj = sixteen_cell_edge(0, 2, n)
+    pointsk = sixteen_cell_edge(0, 3, n)
+    pointsij = sixteen_cell_edge(1, 2, n)
+    pointsik = sixteen_cell_edge(1, 3, n)
+    pointsjk = sixteen_cell_edge(2, 3, n)
+
+    # combine points into a single list of [w,x,y,z] coordinates
+    points = pointsi + pointsj + pointsk + pointsij + pointsik + pointsjk
+    return points
+
+
+def tesseract_edges(nummpoints):
+    n = nummpoints
+    # w x y z
+    vertices = [ [0,0,0,0], [0,0,0,1], [0,0,1,0], [0,0,1,1],
+                 [0,1,0,0], [0,1,0,1], [0,1,1,0], [0,1,1,1],
+                 [1,0,0,0], [1,0,0,1], [1,0,1,0], [1,0,1,1],
+                 [1,1,0,0], [1,1,0,1], [1,1,1,0], [1,1,1,1] ]
+
+    edges = [[0, 1],  [1, 3],  [2, 3],  [0, 2],
+             [4, 5],  [5, 7],  [6, 7],  [4, 6],
+             [8, 9],  [9,11],  [10,11], [8, 10],
+             [12,13], [13,15], [14,15], [12,14],
+             [0, 8],  [1, 9],  [2, 10], [3,11],
+             [4, 12], [5, 13], [6, 14], [7, 15],
+             [0, 4],  [1, 5],  [2, 6],  [3, 7],
+             [8, 12], [9, 13], [10,14], [11,15] ]
+    
+    points = []
+    points_per_line = 100
+    for i in range(len(edges)):
+        #generate line 
+        linew = np.linspace( vertices[ edges[i][0] ][ 0] - 0.5, vertices[ edges[i][1] ][0] - 0.5, points_per_line)
+        linex = np.linspace( vertices[ edges[i][0] ][ 1] - 0.5, vertices[ edges[i][1] ][1] - 0.5, points_per_line)
+        liney = np.linspace( vertices[ edges[i][0] ][ 2] - 0.5, vertices[ edges[i][1] ][2] - 0.5, points_per_line)
+        linez = np.linspace( vertices[ edges[i][0] ][ 3] - 0.5, vertices[ edges[i][1] ][3] - 0.5, points_per_line)
+        # Normalize the points to lie on the unit hypersphere
+        normalized_points = []
+        for w, x, y, z in zip(linew, linex, liney, linez):
+            norm = np.sqrt(w**2 + x**2 + y**2 + z**2)
+            normalized_w = w / norm
+            normalized_x = x / norm
+            normalized_y = y / norm
+            normalized_z = z / norm
+            normalized_points.append([normalized_w, normalized_x, normalized_y, normalized_z])
+        
+        # Extend the points list with the normalized points from this edge
+        points.extend(normalized_points)
+    return points
+
+
+# Runction to rotate a list of 4d points  w xi yj zk and stereographically project to x, y, z
+def Rotate_and_Project(input_rot1, input_rot2, input_phi1, input_phi2, input_theta1, input_theta2, input_points):
+    # generate quaternions from the normal vectors defined by theta and phi
+    scale = m.pi / 180
+    i1, j1, k1 = sphere_to_cart(input_phi1 * scale, input_theta1 * scale)
+    i2, j2, k2 = sphere_to_cart(input_phi2 * scale, input_theta2 * scale)
+    
+    # rotation angles about the normal vectors
+    v1 = m.sin(input_rot1 * scale)
+    w1 = m.cos(input_rot1 * scale)
+    v2 = m.sin(input_rot2 * scale)
+    w2 = m.cos(input_rot2 * scale)
+    # repeat the process for rotating and projecting the points of the 16 cell edges
+    xpoints = []
+    ypoints = []
+    zpoints = []
+    
+    for i in range(len(input_points)):
+        Qrw, Qrx, Qry, Qrz = Quaternion_Multiplication(w1, i1 * v1, j1 * v1, k1 * v1, input_points[i][0], input_points[i][1], input_points[i][2], input_points[i][3])
+        Rotw, Rotx, Roty, Rotz = Quaternion_Multiplication(Qrw, Qrx, Qry, Qrz, w2, - i2 * v2, - j2 * v2, -k2 * v2)
+        proj_x, proj_y, proj_z = stereographic_projection(Rotw, Rotx, Roty, Rotz)
+        xpoints.append(proj_x)
+        ypoints.append(proj_y)
+        zpoints.append(proj_z)
+    
+    return xpoints, ypoints, zpoints, i1, j1, k1, i2, j2, k2
+
+# generate circles for each spherical solid
+#def create_points(i):
+    #if i == 1
+
+if __name__ == '__main__':
+    # generate points for the edges of a 16 cell
+    # points = sixteen_cell_edges()
+    points1 = tesseract_edges(100)
+    points2 = sixteen_cell_edges(500)
+    form_matrix = [points1, points2, points2, points2, points2, points2]
+    
+    
+    # create 3d projection figure
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    boxsize = 5
+    ax.set_box_aspect([1,1,1]), ax.set_xlim(-boxsize, boxsize), ax.set_ylim(-boxsize, boxsize), ax.set_zlim(-boxsize, boxsize), ax.grid(True)
+    
+    # create slider figure
+    fig_sliders = plt.figure()
+    ax_sliders = fig_sliders.add_subplot(111)
+    plt.axis(False)
+
+    # init slider values in degrees
+    init_rot1, init_rot2, init_phi1, init_phi2, init_theta1, init_theta2, init_selector = 90, 45, 0, 0, 45, 0, 0
+
+    points = form_matrix[init_selector]
+
+    # define slider axes and positions
+    ax_rot1 = plt.axes([0.15, 0.8, 0.7, 0.03])
+    ax_rot2 = plt.axes([0.15, 0.4, 0.7, 0.03])
+    ax_phi1 = plt.axes([0.15, 0.7, 0.7, 0.03])
+    ax_phi2 = plt.axes([0.15, 0.3, 0.7, 0.03])
+    ax_theta1 = plt.axes([0.15, 0.6, 0.7, 0.03])
+    ax_theta2 = plt.axes([0.15, 0.2, 0.7, 0.03])
+    ax_selector = plt.axes([0.15, 0.5, 0.7, 0.03])
+    
+
+    # create sliders
+    slider_rot1 = Slider(ax = ax_rot1, label = 'rot1', valmin = int(-180), valmax = int(180), valinit = init_rot1, valstep=1, color = 'red')
+    slider_rot2 = Slider(ax = ax_rot2, label = 'rot2', valmin = int(-180), valmax = int(180), valinit = init_rot2, valstep=1, color = 'blue')
+    slider_phi1 = Slider(ax = ax_phi1, label = 'phi1', valmin = int(0), valmax = int(360), valinit = init_phi1, valstep=1, color = 'red')
+    slider_phi2 = Slider(ax = ax_phi2, label = 'phi2', valmin = int(0), valmax = int(360), valinit = init_phi2, valstep=1, color = 'blue')
+    slider_theta1 = Slider(ax = ax_theta1, label = 'theta1', valmin = int(-90), valmax = int(90), valinit = init_theta1, valstep=1, color = 'red')
+    slider_theta2 = Slider(ax = ax_theta2, label = 'theta2', valmin = int(-90), valmax = int(90), valinit = init_theta2, valstep=1, color = 'blue')
+    slider_selector = Slider(ax = ax_selector, label = 'Form #', valmin = 1, valmax = 6, valinit = init_selector, valstep = 1, color = 'black')
+    
+    # function to rotate 4d points and stereographically project to x, y, z
+    proj_xpoints, proj_ypoints, proj_zpoints, a1, b1, c1, a2, b2, c2 = Rotate_and_Project(init_rot1, init_rot2, init_phi1, init_phi2, init_theta1, init_theta2, points)
+
+    # plot 16-cell edge points
+    scatter = ax.scatter(proj_xpoints, proj_ypoints, proj_zpoints, s = 1, color = 'black')
+
+    # create lines to display the normal vectors for the quaternion rotations
+    line1, line2 = Line3D([0, 5 * a1], [0, 5 * b1], [0, 5 * c1], color = 'red', lw = 3), Line3D([0, 5 * a2], [0, 5 * b2], [0, 5 * c2], color = 'blue', lw = 3)
+    ax.add_line(line1), ax.add_line(line2)
+
+    # keep refreshing the drawing
+    fig.canvas.draw_idle()
+
+    # update function for sliders
+    def update(val):
+        # get slider values
+        
+        rot1, rot2, phi1, phi2, theta1, theta2, form = slider_rot1.val, slider_rot2.val, slider_phi1.val, slider_phi2.val, slider_theta1.val, slider_theta2.val, slider_selector.val
+        
+        points = form_matrix[form - 1]
+        # function to rotate 4d points and stereographically project to x, y, z
+        x, y, z, i1, j1, k1, i2, j2, k2 = Rotate_and_Project(rot1, rot2, phi1, phi2, theta1, theta2, points)
+        
+        # update the coordinates of the scatter plot
+        coordinates = np.column_stack((x, y))
+        scatter.set_offsets(coordinates), scatter.set_3d_properties(z, zdir = 'z')
+
+        # update the coordinates of the normal vectors for the quaternion rotations
+        line1.set_data([0,5 * i1], [0, 5 * j1]), line1.set_3d_properties([0, 5 * k1], zdir = 'z' ), line2.set_data([0, 5 * i2], [0, 5 * j2]), line2.set_3d_properties([0, 5 * k2], zdir = 'z' )
+
+        # continue refreshing the canvas
+        fig.canvas.draw_idle()
+  
+    
+    # connect sliders to update function
+    slider_rot1.on_changed(update), slider_rot2.on_changed(update), slider_phi1.on_changed(update), slider_phi2.on_changed(update)
+    slider_theta1.on_changed(update), slider_theta2.on_changed(update), slider_selector.on_changed(update)
+
+    # display the figures
+    plt.show()
