@@ -4,6 +4,17 @@ import math as m
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from mpl_toolkits.mplot3d.art3d import Line3D
+from scipy.spatial import ConvexHull
+
+
+def even_permutations(list):
+    a = list[0]
+    b = list[1]
+    c = list[2]
+    d = list[3]
+    return[[a,b,c,d],[b,a,c,d],[b,c,a,d],[b,c,d,a],
+           [a,c,b,d],[c,a,b,d],[d,c,b,a],[c,d,b,a],
+           [c,b,a,d],[c,a,d,b],[a,c,d,b],[c,a,b,d]]
 
 
 #sterographically project down to x,y,z
@@ -99,7 +110,6 @@ def generate_edges_from_vertices(points, edge_length):
             distance = m.sqrt(m.pow((x2 - x1),2) + m.pow((y2 - y1),2) + m.pow((z2 - z1),2) + m.pow((w2 - w1),2))
             if abs(distance - length) < 1e-3:
                 connections.append([i, j])
-
     # Convert each sublist to a tuple and use a set to remove duplicates
     # Step 1: Iterate through each sublist and sort them
     sorted_coordinates_list = [sorted(sublist) for sublist in connections]
@@ -109,7 +119,7 @@ def generate_edges_from_vertices(points, edge_length):
 
     # Step 5: Convert the set of unique tuples back to a list
     unique_coordinates_list = [list(t) for t in unique_tuples_set]
-
+    print(len(unique_coordinates_list))
 
     return unique_coordinates_list
 
@@ -237,6 +247,72 @@ def five_cell_edges(nummpoints):
   
     return create_spherical_edges(edges,rotatedvertices,n)
 
+
+def six_hundred_cell_edges(numpoints):
+    n = numpoints
+    # Input list
+    phi = (m.sqrt(5) + 1)/2
+    elements1 = [0, 1/2, (phi-1)/2, phi/2]
+    elements2 = [0, 1/2, (phi-1)/2, -phi/2]
+    elements3 = [0, -1/2, (phi-1)/2, phi/2]
+    elements4 = [0, 1/2, -(phi-1)/2, phi/2]
+    elements5 = [0, -1/2, (phi-1)/2, -phi/2]
+    elements6 = [0, 1/2, -(phi-1)/2, -phi/2]
+    elements7 = [0, -1/2, -(phi-1)/2, phi/2]
+    elements8 = [0, -1/2, -(phi-1)/2, -phi/2]
+    input_list = [elements1, elements2, elements3, elements4, elements5, elements6, elements7, elements8]
+
+    vertex_set1 = []
+    
+
+    for i in range(len(input_list)):
+        vertex_set1.extend(even_permutations(input_list[i]))
+    print("vertex1")
+    print(len(vertex_set1))
+
+    a = 0.5
+    b = -0.5
+    vertex_set2 = [[ a, a, a, a ], [ a, a, a, b ], [ a, a, b, a ], [ a, a, b, b ],
+                   [ a, b, a, a ], [ a, b, a, b ], [ a, b, b, a ], [ a, b, b, b],
+                   [ b, a, a, a ], [ b, a, a, b ], [ b, a, b, a ], [ b, a, b, b ],
+                   [ b, b, a, a ], [ b, b, a, b ], [ b, b, b, a ], [ b, b, b, b ]]
+    vertex_set3 = [[0,0,0,1], [0,0,1,0], [0,1,0,0], [1,0,0,0],
+                   [0,0,0,-1], [0,0,-1,0], [0,-1,0,0], [-1,0,0,0]]
+    vertices = vertex_set1 + vertex_set2 + vertex_set3
+    print(len(vertices))
+    hull = ConvexHull(vertices)
+    edges = hull.equations
+    simplex_indices = hull.simplices
+    unique_simplex_indices = np.unique(np.sort(simplex_indices, axis=1), axis=0)
+    print()
+    edge_indices = []
+# Extract the pairs of coordinates for the edges
+    for i in range(len(unique_simplex_indices)):
+        a = unique_simplex_indices[0]
+        b = unique_simplex_indices[1]
+        c = unique_simplex_indices[2]
+        d = unique_simplex_indices[3]
+        edge_indices.extend( [[a, b], [a, c], [a, d], [b, c], [b, d]] )
+    
+    for i in range(len(edge_indices)):
+        a = edge_indices[0]
+        b = edge_indices[0]
+        
+    
+    unique_sorted_lists = []
+    for sublist in sorted_lists:
+        if sublist not in unique_sorted_lists:
+            unique_sorted_lists.append(sublist)
+    unique_lists_of_lists = [list(sublist) for sublist in unique_sorted_lists]
+# Convert the unique sorted tuples back to lists
+
+
+    print(len(unique_lists_of_lists))
+
+    return create_spherical_edges(unique_lists_of_lists,vertices, n)
+    # return vertices
+    
+
 # Runction to rotate a list of 4d points  w xi yj zk and stereographically project to x, y, z
 def Rotate(input_rot1, input_rot2, input_phi1, input_phi2, input_theta1, input_theta2, input_points):
     # generate quaternions from the normal vectors defined by theta and phi
@@ -287,8 +363,9 @@ if __name__ == '__main__':
     points2 = tesseract_edges(100)
     points3 = sixteen_cell_edges(500)
     points4 = twentyfourcell_edges(50)
+    # points5 = six_hundred_cell_edges(100)
 
-    form_matrix = [points1, points2, points3, points4, points2, points3]
+    form_matrix = [points1, points2, points3, points4, points3]
     
     
     # create 3d projection figure

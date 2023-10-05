@@ -1,0 +1,88 @@
+import numpy as np
+import matplotlib as plt
+import math as m
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
+from mpl_toolkits.mplot3d.art3d import Line3D
+from scipy.spatial import ConvexHull
+from itertools import combinations
+
+def even_permutations(list):
+    a = list[0]
+    b = list[1]
+    c = list[2]
+    d = list[3]
+    return[[a,b,c,d],[b,a,c,d],[b,c,a,d],[b,c,d,a],
+           [a,c,b,d],[c,a,b,d],[d,c,b,a],[c,d,b,a],
+           [c,b,a,d],[c,a,d,b],[a,c,d,b],[c,a,b,d]]
+
+def six_hundred_cell():
+    phi = (m.sqrt(5) + 1)/2
+    elements1 = [0, 1/2, (phi-1)/2, phi/2]
+    elements2 = [0, 1/2, (phi-1)/2, -phi/2]
+    elements3 = [0, -1/2, (phi-1)/2, phi/2]
+    elements4 = [0, 1/2, -(phi-1)/2, phi/2]
+    elements5 = [0, -1/2, (phi-1)/2, -phi/2]
+    elements6 = [0, 1/2, -(phi-1)/2, -phi/2]
+    elements7 = [0, -1/2, -(phi-1)/2, phi/2]
+    elements8 = [0, -1/2, -(phi-1)/2, -phi/2]
+    input_list = [elements1, elements2, elements3, elements4, elements5, elements6, elements7, elements8]
+
+    vertex_set1 = []
+    
+
+    for i in range(len(input_list)):
+        vertex_set1.extend(even_permutations(input_list[i]))
+
+
+
+    a = 0.5
+    b = -0.5
+    vertex_set2 = [[ a, a, a, a ], [ a, a, a, b ], [ a, a, b, a ], [ a, a, b, b ],
+                   [ a, b, a, a ], [ a, b, a, b ], [ a, b, b, a ], [ a, b, b, b],
+                   [ b, a, a, a ], [ b, a, a, b ], [ b, a, b, a ], [ b, a, b, b ],
+                   [ b, b, a, a ], [ b, b, a, b ], [ b, b, b, a ], [ b, b, b, b ]]
+    vertex_set3 = [[0,0,0,1], [0,0,1,0], [0,1,0,0], [1,0,0,0],
+                   [0,0,0,-1], [0,0,-1,0], [0,-1,0,0], [-1,0,0,0]]
+    vertices = vertex_set1 + vertex_set2 + vertex_set3
+    return vertices
+
+
+def calculate_distance(vertex1, vertex2):
+    w1, x1, y1, z1 = vertex1[0], vertex1[1], vertex1[2], vertex1[3]
+    w2, x2, y2, z2 = vertex2[0], vertex2[1], vertex2[2], vertex2[3]
+    
+    distance = m.sqrt( m.pow((w2-w1), 2) + m.pow((x2-x1), 2) + m.pow((y2-y1), 2) + m.pow((z2-z1), 2) )
+
+    return distance
+
+
+
+
+
+
+def find_edges(vertices, edge_length):
+    edges = []
+    num_vertices = len(vertices)
+    visited_pairs = set()
+
+    for i, j in combinations(range(num_vertices), 2):
+        distance = calculate_distance(vertices[i], vertices[j])
+
+        if abs(distance - edge_length) < 0.0001:
+
+            edge_pair = [min(i,j), max(i,j)]
+
+            if tuple(edge_pair) not in visited_pairs:
+                edges.append(edge_pair)
+                visited_pairs.add(tuple(edge_pair))
+
+    return edges
+
+
+phi = (m.sqrt(5) + 1)/2
+points = six_hundred_cell()
+print(len(points))
+print(1/phi)
+print(phi - 1)
+print(len(find_edges(points, phi - 1)))
