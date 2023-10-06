@@ -61,7 +61,8 @@ def Quaternion_Multiplication(w1, x1, y1, z1, w2, x2, y2, z2):
     z = w1 * z2 + w2 * z1 + x1 * y2 - x2 * y1
 
     # normalize 
-    mag = m.sqrt(w * w + x * x + y * y + z * z)
+    #mag = m.sqrt(w * w + x * x + y * y + z * z)
+    mag = 1
     return w/mag, x/mag, y/mag, z/mag
 
 
@@ -248,70 +249,98 @@ def five_cell_edges(nummpoints):
     return create_spherical_edges(edges,rotatedvertices,n)
 
 
+
+# multiply two quaternions
+def Quaternion_Multiplication2(Q1, Q2, round_number):
+    w1, x1, y1, z1, = Q1[0], Q1[1], Q1[2], Q1[3]
+    w2, x2, y2, z2, = Q2[0], Q2[1], Q2[2], Q2[3]
+    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
+    x = w1 * x2 + w2 * x1 + y1 * z2 - y2 * z1
+    y = w1 * y2 + w2 * y1 + z1 * x2 - z2 * x1 
+    z = w1 * z2 + w2 * z1 + x1 * y2 - x2 * y1
+    
+    w, x, y, z = round(w,round_number), round(x,round_number), round(y,round_number), round(z,round_number)
+
+    if w == -0.0:
+        w = 0.0
+
+    if x == -0.0:
+        x = 0.0
+
+    if y == -0.0:
+        y = 0.0
+
+    if z == -0.0:
+        z = 0.0
+
+    return w, x, y, z
+
+
+def not_in_unique_list(quaternion, unique_element_list):
+    for sublist in unique_element_list:
+        if sublist == quaternion:
+            return False
+    return True
+
+
+def six_hundred_cell_points():
+    round_num = 7
+    phi = (m.sqrt(5) + 1 )/2
+    a = 1 / 2
+    p = phi -1
+    w = [-a, a, a, a]
+    q = [0 , a, round(phi / 2,round_num), round(p/2,round_num)]
+    unique_elements = [ tuple(w), tuple(q) ]
+    element_holder = [ tuple(w), tuple(q) ]
+    while len(unique_elements) < 120:
+        new_elements = []
+        for i in range(len(element_holder)):
+            new_elements.append(Quaternion_Multiplication2(element_holder[i], w, round_num))
+            new_elements.append(Quaternion_Multiplication2(element_holder[i], q, round_num))
+        element_holder = []
+        for j in range(len(new_elements)):
+            if not_in_unique_list(new_elements[j], unique_elements):
+                unique_elements.append(new_elements[j])
+                element_holder.append(new_elements[j])
+    return unique_elements
+
+
+def four_dimensional_distance(point1, point2):
+    p1 = list(point1)
+    p2 = list(point2)
+    w1, x1, y1, z1 = p1[0], p1[1], p1[2], p1[3]
+    w2, x2, y2, z2 = p2[0], p2[1], p2[2], p2[3]
+    distance = m.sqrt(m.pow( w2-w1 , 2) + m.pow( x2-x1 , 2) + m.pow( y2-y1 , 2) + m.pow( z2-z1 , 2))
+    return round(distance, 6)
+
 def six_hundred_cell_edges(numpoints):
-    n = numpoints
-    # Input list
-    phi = (m.sqrt(5) + 1)/2
-    elements1 = [0, 1/2, (phi-1)/2, phi/2]
-    elements2 = [0, 1/2, (phi-1)/2, -phi/2]
-    elements3 = [0, -1/2, (phi-1)/2, phi/2]
-    elements4 = [0, 1/2, -(phi-1)/2, phi/2]
-    elements5 = [0, -1/2, (phi-1)/2, -phi/2]
-    elements6 = [0, 1/2, -(phi-1)/2, -phi/2]
-    elements7 = [0, -1/2, -(phi-1)/2, phi/2]
-    elements8 = [0, -1/2, -(phi-1)/2, -phi/2]
-    input_list = [elements1, elements2, elements3, elements4, elements5, elements6, elements7, elements8]
-
-    vertex_set1 = []
-    
-
-    for i in range(len(input_list)):
-        vertex_set1.extend(even_permutations(input_list[i]))
-    print("vertex1")
-    print(len(vertex_set1))
-
-    a = 0.5
-    b = -0.5
-    vertex_set2 = [[ a, a, a, a ], [ a, a, a, b ], [ a, a, b, a ], [ a, a, b, b ],
-                   [ a, b, a, a ], [ a, b, a, b ], [ a, b, b, a ], [ a, b, b, b],
-                   [ b, a, a, a ], [ b, a, a, b ], [ b, a, b, a ], [ b, a, b, b ],
-                   [ b, b, a, a ], [ b, b, a, b ], [ b, b, b, a ], [ b, b, b, b ]]
-    vertex_set3 = [[0,0,0,1], [0,0,1,0], [0,1,0,0], [1,0,0,0],
-                   [0,0,0,-1], [0,0,-1,0], [0,-1,0,0], [-1,0,0,0]]
-    vertices = vertex_set1 + vertex_set2 + vertex_set3
-    print(len(vertices))
-    hull = ConvexHull(vertices)
-    edges = hull.equations
-    simplex_indices = hull.simplices
-    unique_simplex_indices = np.unique(np.sort(simplex_indices, axis=1), axis=0)
-    print()
+    edge_length = round((1 + m.sqrt(5))/2 - 1,6)
+    points = six_hundred_cell_points()
+    length = edge_length
     edge_indices = []
-# Extract the pairs of coordinates for the edges
-    for i in range(len(unique_simplex_indices)):
-        a = unique_simplex_indices[0]
-        b = unique_simplex_indices[1]
-        c = unique_simplex_indices[2]
-        d = unique_simplex_indices[3]
-        edge_indices.extend( [[a, b], [a, c], [a, d], [b, c], [b, d]] )
-    
-    for i in range(len(edge_indices)):
-        a = edge_indices[0]
-        b = edge_indices[0]
-        
-    
-    unique_sorted_lists = []
-    for sublist in sorted_lists:
-        if sublist not in unique_sorted_lists:
-            unique_sorted_lists.append(sublist)
-    unique_lists_of_lists = [list(sublist) for sublist in unique_sorted_lists]
-# Convert the unique sorted tuples back to lists
+    for i in range(len(points)):
+        point1 = points[i]
+        for j in range(len(points)):
+            if j != i:
+                point2 = points[j]
+                dist = four_dimensional_distance(point1, point2)
+                if dist == round(length,6):
+                    if i > j:
+                        index = (j,i)
+                    else:
+                        index = (i,j)
+                    if index not in edge_indices:
+                        edge_indices.append(index)
+
+    return create_spherical_edges(edge_indices, points, numpoints)
 
 
-    print(len(unique_lists_of_lists))
 
-    return create_spherical_edges(unique_lists_of_lists,vertices, n)
-    # return vertices
-    
+
+    return
+
+
+
 
 # Runction to rotate a list of 4d points  w xi yj zk and stereographically project to x, y, z
 def Rotate(input_rot1, input_rot2, input_phi1, input_phi2, input_theta1, input_theta2, input_points):
@@ -363,9 +392,9 @@ if __name__ == '__main__':
     points2 = tesseract_edges(100)
     points3 = sixteen_cell_edges(500)
     points4 = twentyfourcell_edges(50)
-    # points5 = six_hundred_cell_edges(100)
+    points5 = six_hundred_cell_edges(45)
 
-    form_matrix = [points1, points2, points3, points4, points3]
+    form_matrix = [points1, points2, points3, points4, points5, points1]
     
     
     # create 3d projection figure
