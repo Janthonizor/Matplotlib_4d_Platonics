@@ -4,18 +4,37 @@ import math as m
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from mpl_toolkits.mplot3d.art3d import Line3D
-from scipy.spatial import ConvexHull
+from itertools import permutations
 
 
-def even_permutations(list):
-    a = list[0]
-    b = list[1]
-    c = list[2]
-    d = list[3]
-    return[[a,b,c,d],[b,a,c,d],[b,c,a,d],[b,c,d,a],
-           [a,c,b,d],[c,a,b,d],[d,c,b,a],[c,d,b,a],
-           [c,b,a,d],[c,a,d,b],[a,c,d,b],[c,a,b,d]]
+def round_tuple(input, decimal_places=6):
+    rounded_values = tuple(round(value, decimal_places) for value in input)
+    return rounded_values
 
+
+def normalize_tuples(input_list):
+    normalized_list = []
+    
+    for tuple_ in input_list:
+        # Calculate the magnitude of the tuple
+        magnitude = sum(x ** 2 for x in tuple_) ** 0.5
+        # Check if the magnitude is not zero to avoid division by zero
+        if magnitude != 0:
+            normalized_tuple = tuple(x / magnitude for x in tuple_)
+            normalized_list.append(normalized_tuple)
+        else:
+            # Handle the case where the magnitude is zero (avoid division by zero)
+            normalized_list.append(tuple(0 for x in tuple_))
+    
+    return normalized_list
+
+
+def even_permutation_generator(input_tuple):
+    a,b,c,d = input_tuple
+    return[(a,b,c,d),(c,a,b,d),(b,c,a,d),
+           (b,a,d,c),(a,d,b,c),(d,b,a,c),
+           (a,c,d,b),(d,a,c,b),(c,d,a,b),
+           (c,b,d,a),(b,d,c,a),(d,c,b,a)]
 
 #sterographically project down to x,y,z
 def stereographic_projection(w, x, y, z):
@@ -41,7 +60,7 @@ def stereographic_projection(w, x, y, z):
         newy = y * factor
         newz = z * factor
         # Check if the point is outside the specified range (-5 to 5)
-        if abs(newx) > 5 or abs(newx) < -5 or abs(newy) > 5 or abs(newy) < -5 or abs(newz) > 5 or abs(newz) < -5:
+        if abs(newx) > 6 or abs(newx) < -6 or abs(newy) > 6 or abs(newy) < -6 or abs(newz) > 6 or abs(newz) < -6:
             return 0,0,0
         return newx, newy, newz
 
@@ -66,8 +85,9 @@ def Quaternion_Multiplication(w1, x1, y1, z1, w2, x2, y2, z2):
     return w/mag, x/mag, y/mag, z/mag
 
 
-def create_spherical_edges(edge_points, vertex_points, numpoints):
+def create_spherical_edges(edge_points, vertex_points, numpoints, scale = 1):
     n = numpoints
+    s = scale
     edges = edge_points
     vertices = vertex_points
     points = []
@@ -82,6 +102,7 @@ def create_spherical_edges(edge_points, vertex_points, numpoints):
         normalized_points = []
         for w, x, y, z in zip(linew, linex, liney, linez):
             norm = np.sqrt(w**2 + x**2 + y**2 + z**2)
+            norm = norm / scale
             normalized_w = w / norm
             normalized_x = x / norm
             normalized_y = y / norm
@@ -249,7 +270,6 @@ def five_cell_edges(nummpoints):
     return create_spherical_edges(edges,rotatedvertices,n)
 
 
-
 # multiply two quaternions
 def Quaternion_Multiplication2(Q1, Q2, round_number):
     w1, x1, y1, z1, = Q1[0], Q1[1], Q1[2], Q1[3]
@@ -313,6 +333,7 @@ def four_dimensional_distance(point1, point2):
     distance = m.sqrt(m.pow( w2-w1 , 2) + m.pow( x2-x1 , 2) + m.pow( y2-y1 , 2) + m.pow( z2-z1 , 2))
     return round(distance, 6)
 
+
 def six_hundred_cell_edges(numpoints):
     edge_length = round((1 + m.sqrt(5))/2 - 1,6)
     points = six_hundred_cell_points()
@@ -336,10 +357,106 @@ def six_hundred_cell_edges(numpoints):
 
 
 
+def even_permutation_generator(input_tuple):
+    a,b,c,d = input_tuple
+    return[(a,b,c,d),(c,a,b,d),(b,c,a,d),
+           (b,a,d,c),(a,d,b,c),(d,b,a,c),
+           (a,c,d,b),(d,a,c,b),(c,d,a,b),
+           (c,b,d,a),(c,b,d,a),(d,c,b,a)]
 
-    return
 
 
+
+def one_hundred_twenty_cell_points():
+    r5 = m.sqrt(5)
+    p = ( r5 + 1 ) / 2
+    pinv = p-1
+    psq = p+1
+
+    permutations1 = [[0,0,2,2], [0,0,2,-2], [0,0,-2,2], [0,0,-2,-2]]
+    permutations2 = [[p,p,p,1/psq],[p,p,p,-1/psq],[p,p,-p,1/psq],[p,p,-p,-1/psq],
+                    [p,-p,p,1/psq],[p,-p,p,-1/psq],[p,-p,-p,1/psq],[p,-p,-p,-1/psq],
+                    [-p,p,p,1/psq],[-p,p,p,-1/psq],[-p,p,-p,1/psq],[-p,p,-p,-1/psq],
+                    [-p,-p,p,1/psq],[-p,-p,p,-1/psq],[-p,-p,-p,1/psq],[-p,-p,-p,-1/psq] ]
+    permutations3 = [[1,1,1,r5],[1,1,1,-r5],[1,1,-1,r5],[1,1,-1,-r5],
+                    [1,-1,1,r5],[1,-1,1,-r5],[1,-1,-1,r5],[1,-1,-1,-r5],
+                    [-1,1,1,r5],[-1,1,1,-r5],[-1,1,-1,r5],[-1,1,-1,-r5],
+                    [-1,-1,1,r5],[-1,-1,1,-r5],[-1,-1,-1,r5],[-1,-1,-1,-r5]]
+    permutations4 = [[pinv,pinv,pinv,p+1],[pinv,pinv,pinv, -p-1],[pinv,pinv,-pinv,p+1],[pinv,pinv,-pinv,-p-1],
+                    [pinv,-pinv,pinv,p+1],[pinv,-pinv,pinv,-p-1],[pinv,-pinv,-pinv,p+1],[pinv,-pinv,-pinv,-p-1],
+                    [-pinv,pinv,pinv,p+1],[-pinv,pinv,pinv, -p-1],[-pinv,pinv,-pinv,p+1],[-pinv,pinv,-pinv,-p-1],
+                    [-pinv,-pinv,pinv,p+1],[-pinv,-pinv,pinv,-p-1],[-pinv,-pinv,-pinv,p+1],[-pinv,-pinv,-pinv,-p-1]]
+    full_permutations = [permutations1,permutations2,permutations3,permutations4]
+
+    even_permutations1 = [[0,pinv,p,r5],[0,pinv,p,-r5],[0,pinv,-p,r5],[0,pinv,-p,-r5],
+                        [0,-pinv,p,r5],[0,-pinv,p,-r5],[0,-pinv,-p,r5],[0,-pinv,-p,-r5]]
+    even_permutations2 = [[0,1/psq,1,psq],[0,1/psq,1,-p-1],[0,1/psq,-1,psq],[0,1/psq,-1,-psq],
+                        [0,-1/psq,1,psq],[0,-1/psq,1,-p-1],[0,-1/psq,-1,psq],[0,-1/psq,-1,-psq]]
+    even_permutations3 = [[pinv,1,p,2],[pinv,1,p,-2],[pinv,1,-p,2],[pinv,1,-p,-2],
+                        [pinv,-1,p,2],[pinv,-1,p,-2],[pinv,-1,-p,2],[pinv,-1,-p,-2],
+                        [-pinv,1,p,2],[-pinv,1,p,-2],[-pinv,1,-p,2],[-pinv,1,-p,-2],
+                        [-pinv,-1,p,2],[-pinv,-1,p,-2],[-pinv,-1,-p,2],[-pinv,-1,-p,-2]]
+    even_permutations = [even_permutations1, even_permutations2, even_permutations3]
+
+    # perform the full permutations. 
+    # points will be added to a list of tuples and will be converted to a set at the end to eliminate duplicates
+    # 
+    fully_permuted_points = []
+
+    # permute the fully permuted points, and remove duplicates
+    for h in range(len(full_permutations)):
+        current_permutation = full_permutations[h]
+        point_list = []
+        for i in range(len(current_permutation)):
+            point_list.extend(list(permutations(round_tuple(current_permutation[i]))))
+        unique_points = []
+        for j in range(len(point_list)):
+            point = point_list[j]
+            if point not in unique_points:
+                unique_points.append(point)
+
+        fully_permuted_points.extend(unique_points)
+    even_permuted_points = []
+
+    for h in range(len(even_permutations)):
+        current_permutation = even_permutations[h]
+        print('')
+        print(len(current_permutation))
+        print('')
+        point_list = []
+        for i in range(len(current_permutation)):
+            permutationi = current_permutation[i]
+            point_list.extend(list(even_permutation_generator(round_tuple(permutationi))))
+        even_permuted_points.extend(point_list)
+    
+    full_points = fully_permuted_points+even_permuted_points
+
+    return(full_points)
+
+
+
+def one_hundred_twenty_cell_edges(numpoints):
+    points = one_hundred_twenty_cell_points()
+    length = round(3 - m.sqrt(5),6)
+    edge_indices = []
+    for i in range(len(points)):
+        point1 = points[i]
+        for j in range(len(points)):
+            if j != i:
+                point2 = points[j]
+                dist = four_dimensional_distance(point1, point2)
+                if dist == round(length,6):
+                    if i > j:
+                        index = (j,i)
+                    else:
+                        index = (i,j)
+                    if index not in edge_indices:
+                        edge_indices.append(index)
+    print(len(edge_indices))
+
+    sortedp = sorted(edge_indices, key=lambda x: x[0])
+
+    return create_spherical_edges(edge_indices, normalize_tuples(points), numpoints, 0.999)
 
 
 # Runction to rotate a list of 4d points  w xi yj zk and stereographically project to x, y, z
@@ -392,9 +509,11 @@ if __name__ == '__main__':
     points2 = tesseract_edges(100)
     points3 = sixteen_cell_edges(500)
     points4 = twentyfourcell_edges(50)
-    points5 = six_hundred_cell_edges(45)
+    points5 = six_hundred_cell_edges(25)
+    points6 = one_hundred_twenty_cell_edges(15)
 
-    form_matrix = [points1, points2, points3, points4, points5, points1]
+    #one_hundred_twenty_cell_edges(20)
+    form_matrix = [points1, points2, points3, points4, points5, points6]
     
     
     # create 3d projection figure
