@@ -365,8 +365,6 @@ def even_permutation_generator(input_tuple):
            (c,b,d,a),(c,b,d,a),(d,c,b,a)]
 
 
-
-
 def one_hundred_twenty_cell_points():
     r5 = m.sqrt(5)
     p = ( r5 + 1 ) / 2
@@ -487,6 +485,7 @@ def Rotate(input_rot1, input_rot2, input_phi1, input_phi2, input_theta1, input_t
     
     return rotatedw, rotatedx, rotatedy, rotatedz, i1, j1, k1, i2, j2, k2
 
+
 def Project(w,x,y,z):
     Rotw = w
     Rotx = x
@@ -501,6 +500,7 @@ def Project(w,x,y,z):
         ypoints.append(proj_y)
         zpoints.append(proj_z)
     return xpoints, ypoints, zpoints,
+
 
 if __name__ == '__main__':
     # generate points for the edges of a 16 cell
