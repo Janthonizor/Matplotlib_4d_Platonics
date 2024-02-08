@@ -790,15 +790,15 @@ if __name__ == '__main__':
 
     # plot edge points
 
-    scatter = mlab.points3d(xpointsc1, ypointsc1, zpointsc1, color = (0,0,0), scale_factor = 0.005)
-    scatter = mlab.points3d(xpointsc2, ypointsc2, zpointsc2, color = (0,0,0), scale_factor = 0.005)
-    scatter = mlab.points3d(xpointsc3, ypointsc3, zpointsc3, color = (0,0,0), scale_factor = 0.005)
-    scatter = mlab.points3d(xpointsc4, ypointsc4, zpointsc4, color = (0,0,0), scale_factor = 0.005)
-    scatter = mlab.points3d(xpointsc5, ypointsc5, zpointsc5, color = (0,0,0), scale_factor = 0.005)
-    scatter = mlab.points3d(xpointsc7, ypointsc7, zpointsc7, color = (0,0,0), scale_factor = 0.005)
-    scatter = mlab.points3d(xpointsc8, ypointsc8, zpointsc8, color = (0,0,0), scale_factor = 0.005)
-    scatter = mlab.points3d(xpointsc9, ypointsc9, zpointsc9, color = (0,0,0), scale_factor = 0.005)
-    scatter = mlab.points3d(xpointsc6, ypointsc6, zpointsc6, color = (0,0,0), scale_factor = 0.005)
+    scatter = mlab.points3d(xpointsc1, ypointsc1, zpointsc1, color = (0,0,0), scale_factor = 0.01)
+    scatter = mlab.points3d(xpointsc2, ypointsc2, zpointsc2, color = (0,0,0), scale_factor = 0.01)
+    scatter = mlab.points3d(xpointsc3, ypointsc3, zpointsc3, color = (0,0,0), scale_factor = 0.01)
+    scatter = mlab.points3d(xpointsc4, ypointsc4, zpointsc4, color = (0,0,0), scale_factor = 0.01)
+    scatter = mlab.points3d(xpointsc5, ypointsc5, zpointsc5, color = (0,0,0), scale_factor = 0.01)
+    scatter = mlab.points3d(xpointsc7, ypointsc7, zpointsc7, color = (0,0,0), scale_factor = 0.01)
+    scatter = mlab.points3d(xpointsc8, ypointsc8, zpointsc8, color = (0,0,0), scale_factor = 0.01)
+    scatter = mlab.points3d(xpointsc9, ypointsc9, zpointsc9, color = (0,0,0), scale_factor = 0.01)
+    scatter = mlab.points3d(xpointsc6, ypointsc6, zpointsc6, color = (0,0,0), scale_factor = 0.01)
     
 
 
@@ -815,35 +815,36 @@ if __name__ == '__main__':
     scatter = mlab.points3d(pxc1, pyc1, pzc1, color = (1,0,0), scale_factor = s1*0.3) 
     scatter = mlab.points3d(pxc2, pyc2, pzc2, color = (0,0,1), scale_factor = s2*0.3)
     scatter = mlab.points3d(pxc10, pyc10, pzc10, color = (1,1,0), scale_factor = s3*0.25)
-    scatter = mlab.points3d(pxc3, pyc3, pzc3, color = (0,1,0), scale_factor = s4*0.22)
-    scatter = mlab.points3d(pxc4, pyc4, pzc4, color = (1,0,1), scale_factor = s5*0.2)
-    scatter = mlab.points3d(pxc11, pyc11, pzc11, color = (0,1,1), scale_factor = s6*0.2)
-    scatter = mlab.points3d(pxc12, pyc12, pzc12, color = (1,0,0), scale_factor = s7*0.2)
-    scatter = mlab.points3d(pxc13, pyc13, pzc13, color = (0,1,0), scale_factor = s8*0.2)
-    scatter = mlab.points3d(pxc5, pyc5, pzc5, color = (0,0,1), scale_factor = s9*0.2)
-    scatter = mlab.points3d(pxc14, pyc14, pzc14, color = (1,0,1), scale_factor = s10*0.2)
-    scatter = mlab.points3d(pxc7, pyc7, pzc7, color = (0,1,1), scale_factor = s11*0.2)
-    scatter = mlab.points3d(pxc8, pyc8, pzc8, color = (0,1,0), scale_factor = s12*0.2)
-    scatter = mlab.points3d(pxc9, pyc9, pzc9, color = (1,0,0), scale_factor = s13*0.2)
-    scatter = mlab.points3d(pxc15, pyc15, pzc15, color = (1,1,0), scale_factor = s14*0.2)
-    scatter = mlab.points3d(pxc6, pyc6, pzc6, color = (0,0,1), scale_factor = s15*0.2)
+    scatter = mlab.points3d(pxc3, pyc3, pzc3, color = (0,1,0), scale_factor = s4*0.25)
+    scatter = mlab.points3d(pxc4, pyc4, pzc4, color = (1,0,1), scale_factor = s5*0.25)
+    scatter = mlab.points3d(pxc11, pyc11, pzc11, color = (0,1,1), scale_factor = s6*0.25)
+    scatter = mlab.points3d(pxc12, pyc12, pzc12, color = (1,0,0), scale_factor = s7*0.25)
+    scatter = mlab.points3d(pxc13, pyc13, pzc13, color = (0,1,0), scale_factor = s8*0.25)
+    scatter = mlab.points3d(pxc5, pyc5, pzc5, color = (0,0,1), scale_factor = s9*0.25)
+    scatter = mlab.points3d(pxc14, pyc14, pzc14, color = (1,0,1), scale_factor = s10*0.25)
+    scatter = mlab.points3d(pxc7, pyc7, pzc7, color = (0,1,1), scale_factor = s11*0.25)
+    scatter = mlab.points3d(pxc8, pyc8, pzc8, color = (0,1,0), scale_factor = s12*0.25)
+    scatter = mlab.points3d(pxc9, pyc9, pzc9, color = (1,0,0), scale_factor = s13*0.25)
+    scatter = mlab.points3d(pxc15, pyc15, pzc15, color = (1,1,0), scale_factor = s14*0.25)
+    scatter = mlab.points3d(pxc6, pyc6, pzc6, color = (0,0,1), scale_factor = s15*0.25)
+
     
-    '''
-    '''
+    
 
 
-    print(len(pxc1))
-    print(len(pxc2))
-    print(len(pxc3))
-    print(len(pxc4))
-    print(len(pxc5))
-    print(len(pxc7))
-    print(len(pxc8))
-    print(len(pxc9))
-    print(len(pxc6))
+    distance_list = np.round(vdistances,6)
+
+# Extract unique rounded distances
+    unique_rounded_distances = np.unique(distance_list)
+    print(unique_rounded_distances)
+    
+
+    
+
 
     #vertices = mlab.points3d(px, py, pz, color = (0,0,0), scale_factor = 0.05)
     center = mlab.points3d(0,0,0,color = (0,0,0), scale_factor = 0.00001)
+
     # view rotation normalizing point
     #scatter2 = mlab.points3d(-6,-6,-6, scale_factor = 0.01)
     # create lines to display the normal vectors for the quaternion rotations
