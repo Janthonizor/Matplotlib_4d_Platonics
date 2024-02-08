@@ -1,1 +1,601 @@
+import numpy as np
+import matplotlib as plt
+import math as m
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
+from mpl_toolkits.mplot3d.art3d import Line3D
+from itertools import permutations
 
+
+def round_tuple(input, decimal_places=6):
+    rounded_values = tuple(round(value, decimal_places) for value in input)
+    return rounded_values
+
+
+def normalize_tuples(input_list):
+    normalized_list = []
+    
+    for tuple_ in input_list:
+        # Calculate the magnitude of the tuple
+        magnitude = sum(x ** 2 for x in tuple_) ** 0.5
+        # Check if the magnitude is not zero to avoid division by zero
+        if magnitude != 0:
+            normalized_tuple = tuple(x / magnitude for x in tuple_)
+            normalized_list.append(normalized_tuple)
+        else:
+            # Handle the case where the magnitude is zero (avoid division by zero)
+            normalized_list.append(tuple(0 for x in tuple_))
+    
+    return normalized_list
+
+
+def even_permutation_generator(input_tuple):
+    a,b,c,d = input_tuple
+    return[(a,b,c,d),(c,a,b,d),(b,c,a,d),
+           (b,a,d,c),(a,d,b,c),(d,b,a,c),
+           (a,c,d,b),(d,a,c,b),(c,d,a,b),
+           (c,b,d,a),(b,d,c,a),(d,c,b,a)]
+
+#sterographically project down to x,y,z
+def stereographic_projection(w, x, y, z):
+    # Calculate the squared length of the 4D vector
+    length_squared = w**2 + x**2 + y**2 + z**2
+
+    # Check if the length is not too close to zero to avoid division by near-zero
+    if length_squared < 1e-12:
+        return 0.0, 0.0, 0.0
+    elif length_squared > 1:
+        w = w / length_squared
+        x = x / length_squared
+        y = y / length_squared
+        z = z / length_squared
+    # Calculate the factor for normalization
+    if w == 1:
+        return 0, 0, 0
+    else:
+        factor = 1 / (1 - w)
+
+        #project the 4D vector to 3D space
+        newx = x * factor
+        newy = y * factor
+        newz = z * factor
+        # Check if the point is outside the specified range (-5 to 5)
+        if abs(newx) > 6 or abs(newx) < -6 or abs(newy) > 6 or abs(newy) < -6 or abs(newz) > 6 or abs(newz) < -6:
+            return 0,0,0
+        return newx, newy, newz
+
+# phi: 0 to 2pi,  theta: -pi/2 to pi/2
+def sphere_to_cart(phi, theta):
+    x = m.cos(theta) * m.cos(phi)
+    y = m.cos(theta) * m.sin(phi)
+    z = m.sin(theta)
+    return x, y, z
+
+# Perform Quaternion multiplication on a point
+def Quaternion_Multiplication(w1, x1, y1, z1, w2, x2, y2, z2):
+    # (w1 + x1 i + y1 j + z1 k) x (w2 + x2 i + y2 j + z2 k)
+    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
+    x = w1 * x2 + w2 * x1 + y1 * z2 - y2 * z1
+    y = w1 * y2 + w2 * y1 + z1 * x2 - z2 * x1 
+    z = w1 * z2 + w2 * z1 + x1 * y2 - x2 * y1
+
+    # normalize 
+    #mag = m.sqrt(w * w + x * x + y * y + z * z)
+    mag = 1
+    return w/mag, x/mag, y/mag, z/mag
+
+
+def create_spherical_edges(edge_points, vertex_points, numpoints, scale = 1):
+    n = numpoints
+    s = scale
+    edges = edge_points
+    vertices = vertex_points
+    points = []
+    
+    for i in range(len(edges)):
+        #generate line 
+        linew = np.linspace( vertices[ edges[i][0] ][ 0], vertices[ edges[i][1] ][0], n)
+        linex = np.linspace( vertices[ edges[i][0] ][ 1], vertices[ edges[i][1] ][1], n)
+        liney = np.linspace( vertices[ edges[i][0] ][ 2], vertices[ edges[i][1] ][2], n)
+        linez = np.linspace( vertices[ edges[i][0] ][ 3], vertices[ edges[i][1] ][3], n)
+        # Normalize the points to lie on the unit hypersphere
+        normalized_points = []
+        for w, x, y, z in zip(linew, linex, liney, linez):
+            norm = np.sqrt(w**2 + x**2 + y**2 + z**2)
+            norm = norm / scale
+            normalized_w = w / norm
+            normalized_x = x / norm
+            normalized_y = y / norm
+            normalized_z = z / norm
+            normalized_points.append([normalized_w, normalized_x, normalized_y, normalized_z])
+        
+        # Extend the points list with the normalized points from this edge
+        points.extend(normalized_points)
+    return points
+
+
+def generate_edges_from_vertices(points, edge_length):
+    length = edge_length
+    p = points
+    # iterate through the pairs of points and create a list which contains  [indices of the points and the distance]
+    connections = []
+    for i in range(len(p)):
+        w1 = points[i][0]
+        x1 = points[i][1]
+        y1 = points[i][2]
+        z1 = points[i][3]
+        for j in range(len(p)):
+            w2 = points[j][0]
+            x2 = points[j][1]
+            y2 = points[j][2]
+            z2 = points[j][3]
+            distance = m.sqrt(m.pow((x2 - x1),2) + m.pow((y2 - y1),2) + m.pow((z2 - z1),2) + m.pow((w2 - w1),2))
+            if abs(distance - length) < 1e-3:
+                connections.append([i, j])
+    # Convert each sublist to a tuple and use a set to remove duplicates
+    # Step 1: Iterate through each sublist and sort them
+    sorted_coordinates_list = [sorted(sublist) for sublist in connections]
+
+    # Step 2-4: Convert each sorted sublist to a tuple and use a set to remove duplicates
+    unique_tuples_set = set(tuple(sublist) for sublist in sorted_coordinates_list)
+
+    # Step 5: Convert the set of unique tuples back to a list
+    unique_coordinates_list = [list(t) for t in unique_tuples_set]
+    print(len(unique_coordinates_list))
+
+    return unique_coordinates_list
+
+# Generates points for a unit circle with t = linspace(0, 2pi, numpoints)  sin(t) in the ith position and cos(t) in the jth position  where 0 1 2 3 = w xi yj zk
+def sixteen_cell_edge(i, j, numpoints):
+    numpoints = numpoints
+    theta = np.linspace(0, 2*m.pi, numpoints)
+    if i < 0 or i > 3 or j < 0 or j > 3 or j == i:
+        raise ValueError("incorrect i and j: range:(0,4), i(cos) must be different than j(sin)")
+
+    points_list = []
+    for value in theta:
+        point = [0.0, 0.0, 0.0, 0.0]
+        point[i] = m.sin(value)
+        point[j] = m.cos(value)
+        points_list.append(point)
+
+    return points_list
+
+
+def sixteen_cell_edges(numpoints):
+    n = numpoints
+
+    # generate  points for the 6 circles of the 16 cell
+   
+    pointsi = sixteen_cell_edge(0, 1, n)
+    pointsj = sixteen_cell_edge(0, 2, n)
+    pointsk = sixteen_cell_edge(0, 3, n)
+    pointsij = sixteen_cell_edge(1, 2, n)
+    pointsik = sixteen_cell_edge(1, 3, n)
+    pointsjk = sixteen_cell_edge(2, 3, n)
+    
+
+    # combine points into a single list of [w,x,y,z] coordinates
+    points = pointsi + pointsj + pointsk + pointsij + pointsik + pointsjk
+    
+
+    return points
+
+
+def tesseract_edges(nummpoints):
+    n = nummpoints
+    # w x y z
+    vertices = [ [-0.5,-0.5,-0.5,-0.5], [-0.5,-0.5,-0.5,0.5], [-0.5,-0.5,0.5,-0.5], [-0.5,-0.5,0.5,0.5],
+                 [-0.5,0.5,-0.5,-0.5], [-0.5,0.5,-0.5,0.5], [-0.5,0.5,0.5,-0.5], [-0.5,0.5,0.5,0.5],
+                 [0.5,-0.5,-0.5,-0.5], [0.5,-0.5,-0.5,0.5], [0.5,-0.5,0.5,-0.5], [0.5,-0.5,0.5,0.5],
+                 [0.5,0.5,-0.5,-0.5], [0.5,0.5,-0.5,0.5], [0.5,0.5,0.5,-0.5], [0.5,0.5,0.5,0.5] ]
+
+    edges = generate_edges_from_vertices(vertices,1)
+    return create_spherical_edges(edges, vertices, n)
+
+
+    n = nummpoints
+    # w x y z
+    p = (m.sqrt(5) + 1 ) / 2 
+    a =  2 / p 
+    b = a - 3
+    c = 1 / ( (1 / p) - 2 )
+    d = m.sqrt(5/16)
+    # vertices = [ [ a, a, a, -b ], [ a, -a, -a, -b ], [ -a, a, -a, -b ], [-a, -a, a, -b], [ 0, 0, 0, 1 ] ]
+    vertices = [ [ c * b, c, c, c ], [ c, c * b, c, d * c ], [ c, d * c, c * b, c ], [c, c, c, d * c * b], [ c * a, c * a, c * a, c * a ] ]
+
+    edges = [ [0, 1], [0, 2], [0, 3], [0, 4], [ 1, 2 ], [ 1, 3 ], [ 1, 4 ], [ 2, 3 ], [ 2, 4 ], [ 3, 4] ]
+    
+    points = []
+    for i in range(len(edges)):
+        #generate line 
+        linew = np.linspace( vertices[ edges[i][0] ][ 0], vertices[ edges[i][1] ][0], n)
+        linex = np.linspace( vertices[ edges[i][0] ][ 1], vertices[ edges[i][1] ][1], n)
+        liney = np.linspace( vertices[ edges[i][0] ][ 2], vertices[ edges[i][1] ][2], n)
+        linez = np.linspace( vertices[ edges[i][0] ][ 3], vertices[ edges[i][1] ][3], n)
+
+        # Normalize the points to lie on the unit hypersphere
+        normalized_points = []
+        for w, x, y, z in zip(linew, linex, liney, linez):
+            norm = np.sqrt(w**2 + x**2 + y**2 + z**2)
+            normalized_w = w / norm
+            normalized_x = x / norm
+            normalized_y = y / norm
+            normalized_z = z / norm
+            normalized_points.append([normalized_w, normalized_x, normalized_y, normalized_z])
+        
+        # Extend the points list with the normalized points from this edge
+        points.extend(normalized_points)
+    return points
+
+
+def twentyfourcell_edges(nummpoints):
+    n = nummpoints
+    # w x y z
+    a = 0.5
+    b = -0.5
+    vertices = [ [1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1], [-1,0,0,0], [0,-1,0,0], [0,0,-1,0], [0,0,0,-1], 
+                 [ a, a, a, a ], [ a, a, a, b ], [ a, a, b, a ], [ a, a, b, b ],
+                 [ a, b, a, a ], [ a, b, a, b ], [ a, b, b, a ], [ a, b, b, b],
+                 [ b, a, a, a ], [ b, a, a, b ], [ b, a, b, a ], [ b, a, b, b ],
+                 [ b, b, a, a ], [ b, b, a, b ], [ b, b, b, a ], [ b, b, b, b ] ]
+
+
+    edges = generate_edges_from_vertices(vertices, 1)
+
+    return create_spherical_edges(edges, vertices, n)
+
+
+def five_cell_edges(nummpoints):
+    n = nummpoints
+    # w x y z
+    p = (m.sqrt(5) + 1 ) / 2 
+    a =  2 / p 
+    b = a - 3
+    vertices = [ [ a, a, a, -b ], [ a, -a, -a, -b ], [ -a, a, -a, -b ], [-a, -a, a, -b], [ 0.0, 0.0, 0.0, 1.0 ] ]
+    w5,x5,y5,z5, c, d, e, f, g, h= Rotate(90,0,0,0,90,0,vertices)
+    rotatedvertices = []
+    for i in range(len(w5)):
+        w = w5[i]
+        x = x5[i]
+        y = y5[i]
+        z = z5[i]
+        length = m.sqrt(w * w + x * x + y * y + z * z)
+        rotatedvertices.append([ w5[i] / length, x5[i] / length, y5[i] / length, z5[i] / length])
+
+    # edgelength = m.sqrt(m.pow((w5[1] - w5[0] ),2) + m.pow((x5[1] - x5[0]),2) + m.pow((y5[1] - y5[0]),2) + m.pow((z5[1] - z5[0]),2))
+    
+    edges = [ [0, 1], [0, 2], [0, 3], [0, 4], [ 1, 2 ], [ 1, 3 ], [ 1, 4 ], [ 2, 3 ], [ 2, 4 ], [ 3, 4] ]
+  
+    return create_spherical_edges(edges,rotatedvertices,n)
+
+
+# multiply two quaternions
+def Quaternion_Multiplication2(Q1, Q2, round_number):
+    w1, x1, y1, z1, = Q1[0], Q1[1], Q1[2], Q1[3]
+    w2, x2, y2, z2, = Q2[0], Q2[1], Q2[2], Q2[3]
+    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
+    x = w1 * x2 + w2 * x1 + y1 * z2 - y2 * z1
+    y = w1 * y2 + w2 * y1 + z1 * x2 - z2 * x1 
+    z = w1 * z2 + w2 * z1 + x1 * y2 - x2 * y1
+    
+    w, x, y, z = round(w,round_number), round(x,round_number), round(y,round_number), round(z,round_number)
+
+    if w == -0.0:
+        w = 0.0
+
+    if x == -0.0:
+        x = 0.0
+
+    if y == -0.0:
+        y = 0.0
+
+    if z == -0.0:
+        z = 0.0
+
+    return w, x, y, z
+
+
+def not_in_unique_list(quaternion, unique_element_list):
+    for sublist in unique_element_list:
+        if sublist == quaternion:
+            return False
+    return True
+
+
+def six_hundred_cell_points():
+    round_num = 7
+    phi = (m.sqrt(5) + 1 )/2
+    a = 1 / 2
+    p = phi -1
+    w = [-a, a, a, a]
+    q = [0 , a, round(phi / 2,round_num), round(p/2,round_num)]
+    unique_elements = [ tuple(w), tuple(q) ]
+    element_holder = [ tuple(w), tuple(q) ]
+    while len(unique_elements) < 120:
+        new_elements = []
+        for i in range(len(element_holder)):
+            new_elements.append(Quaternion_Multiplication2(element_holder[i], w, round_num))
+            new_elements.append(Quaternion_Multiplication2(element_holder[i], q, round_num))
+        element_holder = []
+        for j in range(len(new_elements)):
+            if not_in_unique_list(new_elements[j], unique_elements):
+                unique_elements.append(new_elements[j])
+                element_holder.append(new_elements[j])
+    return unique_elements
+
+
+def four_dimensional_distance(point1, point2):
+    p1 = list(point1)
+    p2 = list(point2)
+    w1, x1, y1, z1 = p1[0], p1[1], p1[2], p1[3]
+    w2, x2, y2, z2 = p2[0], p2[1], p2[2], p2[3]
+    distance = m.sqrt(m.pow( w2-w1 , 2) + m.pow( x2-x1 , 2) + m.pow( y2-y1 , 2) + m.pow( z2-z1 , 2))
+    return round(distance, 6)
+
+
+def six_hundred_cell_edges(numpoints):
+    edge_length = round((1 + m.sqrt(5))/2 - 1,6)
+    points = six_hundred_cell_points()
+    length = edge_length
+    edge_indices = []
+    for i in range(len(points)):
+        point1 = points[i]
+        for j in range(len(points)):
+            if j != i:
+                point2 = points[j]
+                dist = four_dimensional_distance(point1, point2)
+                if dist == round(length,6):
+                    if i > j:
+                        index = (j,i)
+                    else:
+                        index = (i,j)
+                    if index not in edge_indices:
+                        edge_indices.append(index)
+
+    return create_spherical_edges(edge_indices, points, numpoints)
+
+
+
+def even_permutation_generator(input_tuple):
+    a,b,c,d = input_tuple
+    return[(a,b,c,d),(c,a,b,d),(b,c,a,d),
+           (b,a,d,c),(a,d,b,c),(d,b,a,c),
+           (a,c,d,b),(d,a,c,b),(c,d,a,b),
+           (c,b,d,a),(c,b,d,a),(d,c,b,a)]
+
+
+def one_hundred_twenty_cell_points():
+    r5 = m.sqrt(5)
+    p = ( r5 + 1 ) / 2
+    pinv = p-1
+    psq = p+1
+
+    permutations1 = [[0,0,2,2], [0,0,2,-2], [0,0,-2,2], [0,0,-2,-2]]
+    permutations2 = [[p,p,p,1/psq],[p,p,p,-1/psq],[p,p,-p,1/psq],[p,p,-p,-1/psq],
+                    [p,-p,p,1/psq],[p,-p,p,-1/psq],[p,-p,-p,1/psq],[p,-p,-p,-1/psq],
+                    [-p,p,p,1/psq],[-p,p,p,-1/psq],[-p,p,-p,1/psq],[-p,p,-p,-1/psq],
+                    [-p,-p,p,1/psq],[-p,-p,p,-1/psq],[-p,-p,-p,1/psq],[-p,-p,-p,-1/psq] ]
+    permutations3 = [[1,1,1,r5],[1,1,1,-r5],[1,1,-1,r5],[1,1,-1,-r5],
+                    [1,-1,1,r5],[1,-1,1,-r5],[1,-1,-1,r5],[1,-1,-1,-r5],
+                    [-1,1,1,r5],[-1,1,1,-r5],[-1,1,-1,r5],[-1,1,-1,-r5],
+                    [-1,-1,1,r5],[-1,-1,1,-r5],[-1,-1,-1,r5],[-1,-1,-1,-r5]]
+    permutations4 = [[pinv,pinv,pinv,p+1],[pinv,pinv,pinv, -p-1],[pinv,pinv,-pinv,p+1],[pinv,pinv,-pinv,-p-1],
+                    [pinv,-pinv,pinv,p+1],[pinv,-pinv,pinv,-p-1],[pinv,-pinv,-pinv,p+1],[pinv,-pinv,-pinv,-p-1],
+                    [-pinv,pinv,pinv,p+1],[-pinv,pinv,pinv, -p-1],[-pinv,pinv,-pinv,p+1],[-pinv,pinv,-pinv,-p-1],
+                    [-pinv,-pinv,pinv,p+1],[-pinv,-pinv,pinv,-p-1],[-pinv,-pinv,-pinv,p+1],[-pinv,-pinv,-pinv,-p-1]]
+    full_permutations = [permutations1,permutations2,permutations3,permutations4]
+
+    even_permutations1 = [[0,pinv,p,r5],[0,pinv,p,-r5],[0,pinv,-p,r5],[0,pinv,-p,-r5],
+                        [0,-pinv,p,r5],[0,-pinv,p,-r5],[0,-pinv,-p,r5],[0,-pinv,-p,-r5]]
+    even_permutations2 = [[0,1/psq,1,psq],[0,1/psq,1,-p-1],[0,1/psq,-1,psq],[0,1/psq,-1,-psq],
+                        [0,-1/psq,1,psq],[0,-1/psq,1,-p-1],[0,-1/psq,-1,psq],[0,-1/psq,-1,-psq]]
+    even_permutations3 = [[pinv,1,p,2],[pinv,1,p,-2],[pinv,1,-p,2],[pinv,1,-p,-2],
+                        [pinv,-1,p,2],[pinv,-1,p,-2],[pinv,-1,-p,2],[pinv,-1,-p,-2],
+                        [-pinv,1,p,2],[-pinv,1,p,-2],[-pinv,1,-p,2],[-pinv,1,-p,-2],
+                        [-pinv,-1,p,2],[-pinv,-1,p,-2],[-pinv,-1,-p,2],[-pinv,-1,-p,-2]]
+    even_permutations = [even_permutations1, even_permutations2, even_permutations3]
+
+    # perform the full permutations. 
+    # points will be added to a list of tuples and will be converted to a set at the end to eliminate duplicates
+    # 
+    fully_permuted_points = []
+
+    # permute the fully permuted points, and remove duplicates
+    for h in range(len(full_permutations)):
+        current_permutation = full_permutations[h]
+        point_list = []
+        for i in range(len(current_permutation)):
+            point_list.extend(list(permutations(round_tuple(current_permutation[i]))))
+        unique_points = []
+        for j in range(len(point_list)):
+            point = point_list[j]
+            if point not in unique_points:
+                unique_points.append(point)
+
+        fully_permuted_points.extend(unique_points)
+    even_permuted_points = []
+
+    for h in range(len(even_permutations)):
+        current_permutation = even_permutations[h]
+        print('')
+        print(len(current_permutation))
+        print('')
+        point_list = []
+        for i in range(len(current_permutation)):
+            permutationi = current_permutation[i]
+            point_list.extend(list(even_permutation_generator(round_tuple(permutationi))))
+        even_permuted_points.extend(point_list)
+    
+    full_points = fully_permuted_points+even_permuted_points
+
+    return(full_points)
+
+
+
+def one_hundred_twenty_cell_edges(numpoints):
+    points = one_hundred_twenty_cell_points()
+    length = round(3 - m.sqrt(5),6)
+    edge_indices = []
+    for i in range(len(points)):
+        point1 = points[i]
+        for j in range(len(points)):
+            if j != i:
+                point2 = points[j]
+                dist = four_dimensional_distance(point1, point2)
+                if dist == round(length,6):
+                    if i > j:
+                        index = (j,i)
+                    else:
+                        index = (i,j)
+                    if index not in edge_indices:
+                        edge_indices.append(index)
+    print(len(edge_indices))
+
+    sortedp = sorted(edge_indices, key=lambda x: x[0])
+
+    return create_spherical_edges(edge_indices, normalize_tuples(points), numpoints, 0.999)
+
+
+# Runction to rotate a list of 4d points  w xi yj zk and stereographically project to x, y, z
+def Rotate(input_rot1, input_rot2, input_phi1, input_phi2, input_theta1, input_theta2, input_points):
+    # generate quaternions from the normal vectors defined by theta and phi
+    scale = m.pi / 180
+    i1, j1, k1 = sphere_to_cart(input_phi1 * scale, input_theta1 * scale)
+    i2, j2, k2 = sphere_to_cart(input_phi2 * scale, input_theta2 * scale)
+    
+    # rotation angles about the normal vectors
+    v1 = m.sin(input_rot1 * scale)
+    w1 = m.cos(input_rot1 * scale)
+    v2 = m.sin(input_rot2 * scale)
+    w2 = m.cos(input_rot2 * scale)
+    # repeat the process for rotating and projecting the points of the 16 cell edges
+    rotatedw = []
+    rotatedx = []
+    rotatedy = []
+    rotatedz = []
+
+    for i in range(len(input_points)):
+        Qrw, Qrx, Qry, Qrz = Quaternion_Multiplication(w1, i1 * v1, j1 * v1, k1 * v1, input_points[i][0], input_points[i][1], input_points[i][2], input_points[i][3])
+        Rotw, Rotx, Roty, Rotz = Quaternion_Multiplication(Qrw, Qrx, Qry, Qrz, w2, - i2 * v2, - j2 * v2, -k2 * v2)
+        rotatedw.append(Rotw)
+        rotatedx.append(Rotx)
+        rotatedy.append(Roty)
+        rotatedz.append(Rotz)
+    
+    return rotatedw, rotatedx, rotatedy, rotatedz, i1, j1, k1, i2, j2, k2
+
+
+def Project(w,x,y,z):
+    Rotw = w
+    Rotx = x
+    Roty = y
+    Rotz = z
+    xpoints = []
+    ypoints = []
+    zpoints = []
+    for i in range(len(x)):
+        proj_x, proj_y, proj_z = stereographic_projection(Rotw[i], Rotx[i], Roty[i], Rotz[i])
+        xpoints.append(proj_x)
+        ypoints.append(proj_y)
+        zpoints.append(proj_z)
+    return xpoints, ypoints, zpoints,
+
+
+if __name__ == '__main__':
+    # generate points for the edges of a 16 cell
+    # points = sixteen_cell_edges()
+    points1 = five_cell_edges(100)
+    points2 = tesseract_edges(100)
+    points3 = sixteen_cell_edges(500)
+    points4 = twentyfourcell_edges(50)
+    points5 = six_hundred_cell_edges(25)
+    points6 = one_hundred_twenty_cell_edges(15)
+
+    #one_hundred_twenty_cell_edges(20)
+    form_matrix = [points1, points2, points3, points4, points5, points6]
+    
+    
+    # create 3d projection figure
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    boxsize = 5
+    ax.set_box_aspect([1,1,1]), ax.set_xlim(-boxsize, boxsize), ax.set_ylim(-boxsize, boxsize), ax.set_zlim(-boxsize, boxsize), ax.grid(True)
+    
+    # create slider figure
+    fig_sliders = plt.figure()
+    ax_sliders = fig_sliders.add_subplot(111)
+    plt.axis(False)
+
+    # init slider values in degrees
+    # init_rot1, init_rot2, init_phi1, init_phi2, init_theta1, init_theta2 = 90, 45, 0, 0, 45, 0
+    init_rot1, init_rot2, init_phi1, init_phi2, init_theta1, init_theta2 = 0, 0, 0, 0, 0, 0
+    init_selector = 0 
+
+
+    points = form_matrix[init_selector]
+
+    # define slider axes and positions
+    ax_rot1 = plt.axes([0.15, 0.8, 0.7, 0.03])
+    ax_rot2 = plt.axes([0.15, 0.4, 0.7, 0.03])
+    ax_phi1 = plt.axes([0.15, 0.7, 0.7, 0.03])
+    ax_phi2 = plt.axes([0.15, 0.3, 0.7, 0.03])
+    ax_theta1 = plt.axes([0.15, 0.6, 0.7, 0.03])
+    ax_theta2 = plt.axes([0.15, 0.2, 0.7, 0.03])
+    ax_selector = plt.axes([0.15, 0.5, 0.7, 0.03])
+
+    
+
+    # create sliders
+    slider_rot1 = Slider(ax = ax_rot1, label = 'rot1', valmin = int(-180), valmax = int(180), valinit = init_rot1, valstep=1, color = 'red')
+    slider_rot2 = Slider(ax = ax_rot2, label = 'rot2', valmin = int(-180), valmax = int(180), valinit = init_rot2, valstep=1, color = 'blue')
+    slider_phi1 = Slider(ax = ax_phi1, label = 'phi1', valmin = int(0), valmax = int(360), valinit = init_phi1, valstep=1, color = 'red')
+    slider_phi2 = Slider(ax = ax_phi2, label = 'phi2', valmin = int(0), valmax = int(360), valinit = init_phi2, valstep=1, color = 'blue')
+    slider_theta1 = Slider(ax = ax_theta1, label = 'theta1', valmin = int(-90), valmax = int(90), valinit = init_theta1, valstep=1, color = 'red')
+    slider_theta2 = Slider(ax = ax_theta2, label = 'theta2', valmin = int(-90), valmax = int(90), valinit = init_theta2, valstep=1, color = 'blue')
+    slider_selector = Slider(ax = ax_selector, label = 'Form #', valmin = 1, valmax = 6, valinit = init_selector, valstep = 1, color = 'black')
+
+    
+    # function to rotate 4d points and stereographically project to x, y, z
+    Rotw, Rotx, Roty, Rotz, a1, b1, c1, a2, b2, c2 = Rotate(init_rot1, init_rot2, init_phi1, init_phi2, init_theta1, init_theta2, points)
+    proj_xpoints, proj_ypoints, proj_zpoints = Project(Rotw, Rotx, Roty, Rotz)
+
+    # plot edge points
+    scatter = ax.scatter(proj_xpoints, proj_ypoints, proj_zpoints, s = 1, color = 'black')
+
+    # create lines to display the normal vectors for the quaternion rotations
+    line1, line2 = Line3D([0, 5 * a1], [0, 5 * b1], [0, 5 * c1], color = 'red', lw = 3), Line3D([0, 5 * a2], [0, 5 * b2], [0, 5 * c2], color = 'blue', lw = 3)
+    ax.add_line(line1), ax.add_line(line2)
+
+    # keep refreshing the drawing
+    fig.canvas.draw_idle()
+
+    # update function for sliders
+    def update(val):
+        # get slider values
+        
+        rot1, rot2, phi1, phi2, theta1, theta2, form = slider_rot1.val, slider_rot2.val, slider_phi1.val, slider_phi2.val, slider_theta1.val, slider_theta2.val, slider_selector.val
+
+        points = form_matrix[form - 1]
+        # function to rotate 4d points and stereographically project to x, y, z
+        Rotw, Rotx, Roty, Rotz, i1, j1, k1, i2, j2, k2 = Rotate(rot1, rot2, phi1, phi2, theta1, theta2, points)
+        x,y,z = Project(Rotw,Rotx,Roty,Rotz)
+        
+        # update the coordinates of the scatter plot
+        coordinates = np.column_stack((x, y))
+        scatter.set_offsets(coordinates), scatter.set_3d_properties(z, zdir = 'z')
+
+        # update the coordinates of the normal vectors for the quaternion rotations
+        line1.set_data([0,5 * i1], [0, 5 * j1]), line1.set_3d_properties([0, 5 * k1], zdir = 'z' ), line2.set_data([0, 5 * i2], [0, 5 * j2]), line2.set_3d_properties([0, 5 * k2], zdir = 'z' )
+
+        # continue refreshing the canvas
+        fig.canvas.draw_idle()
+  
+    
+    # connect sliders to update function
+    slider_rot1.on_changed(update), slider_rot2.on_changed(update), slider_phi1.on_changed(update), slider_phi2.on_changed(update)
+    slider_theta1.on_changed(update), slider_theta2.on_changed(update), slider_selector.on_changed(update)
+
+    # display the figures
+    plt.show()
